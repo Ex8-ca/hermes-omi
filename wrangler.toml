@@ -1,0 +1,26 @@
+name = "hermes-omi"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+routes = [{ pattern = "omi.chillygeek.com", custom_domain = true }]
+
+[[kv_namespaces]]
+binding = "USERS"
+id = "REPLACE_WITH_KV_ID"
+
+[[durable_objects.bindings]]
+name = "USER_DO"
+class_name = "UserDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["UserDO"]
+
+[vars]
+OMI_APP_ID = ""          # app id of the real-time transcript app (for push replies)
+DEBOUNCE_MS = "4000"
+MAX_COMMANDS_PER_HOUR = "30"
+
+# Secrets (wrangler secret put ...):
+#   ENC_KEY          32 random bytes, base64  (encrypts stored Hermes API keys)
+#   SESSION_SECRET   random string            (signs setup-page cookies)
+#   OMI_APP_SECRET   Omi app secret           (push notifications)
