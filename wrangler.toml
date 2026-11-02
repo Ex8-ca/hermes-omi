@@ -5,7 +5,7 @@ routes = [{ pattern = "omi.chillygeek.com", custom_domain = true }]
 
 [[kv_namespaces]]
 binding = "USERS"
-id = "REPLACE_WITH_KV_ID"
+id = "f2949dd5a5ed4078992b875fa7797e0d"
 
 [[durable_objects.bindings]]
 name = "USER_DO"

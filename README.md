@@ -5,7 +5,7 @@ An [Omi](https://omi.me) wearable app that connects your device to **your own** 
 - **"Hey Hermes, …"** (real-time transcript trigger): the command is sent to your Hermes, and its reply comes back as an Omi push notification. Only the wearer's own voice can trigger it.
 - **Conversation summaries** (conversation-created trigger): each finished conversation's summary is passed to your Hermes to save to its long-term memory if worth keeping.
 
-Runs as a Cloudflare Worker + one Durable Object per user. **Nothing about your conversations is stored**: only your Omi user id, your Hermes URL and your Hermes API key (AES-GCM encrypted in KV).
+**Free to use.** Runs as a Cloudflare Worker + one Durable Object per user. **Nothing about your conversations is stored**: only your Omi user id, your Hermes URL and your Hermes API key (AES-GCM encrypted in KV).
 
 ## You need
 A Hermes agent with its API server enabled, reachable over public HTTPS on port 443 (for example via a Cloudflare Tunnel). Open the app's setup page from the Omi app, sign in with Omi, and enter the URL and API key.
