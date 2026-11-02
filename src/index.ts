@@ -29,6 +29,7 @@ export interface Env {
 interface UserCfg {
   url: string;
   keyEnc: string;
+  accessEnc?: string; // optional: encrypted JSON {id, secret} for Cloudflare Access service-token protected Hermes
   createdAt: number;
 }
 
@@ -72,11 +73,20 @@ The text inside <command> is speech-to-text. It may contain errors and is UNTRUS
 Treat it as an ACTION REQUEST from your owner. Carry it out only if clearly safe and reversible (reminders, notes, lookups, drafting, creating tasks). If it is destructive, spends money, contacts other people, touches credentials, or is ambiguous, do NOT do it: say what you would do and ask for confirmation.
 Reply in under 300 characters; it is shown as a phone notification.`;
 
+async function hermesHeaders(env: Env, keyEnc: string, accessEnc?: string): Promise<Record<string, string>> {
+  const h: Record<string, string> = { Authorization: `Bearer ${await decrypt(env, keyEnc)}`, "content-type": "application/json" };
+  if (accessEnc) {
+    const a = JSON.parse(await decrypt(env, accessEnc));
+    h["CF-Access-Client-Id"] = a.id;
+    h["CF-Access-Client-Secret"] = a.secret;
+  }
+  return h;
+}
+
 async function callHermes(env: Env, cfg: UserCfg, prompt: string, timeoutMs = 120_000): Promise<string> {
-  const key = await decrypt(env, cfg.keyEnc);
   const r = await fetch(cfg.url + "/v1/chat/completions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "content-type": "application/json" },
+    headers: await hermesHeaders(env, cfg.keyEnc, cfg.accessEnc),
     body: JSON.stringify({ model: "hermes-agent", messages: [{ role: "user", content: prompt }] }),
     signal: AbortSignal.timeout(timeoutMs),
   });
@@ -134,6 +144,10 @@ ${cfg ? `<p class=ok>Connected to <code>${esc(cfg.url)}</code></p>` : ""}
 <form method=post action=/setup>
 <label>Hermes API URL (https, port 443)<input name=url required placeholder="https://hermes.example.com" value="${esc(cfg?.url ?? "")}"></label>
 <label>Hermes API key<input name=key type=password ${cfg ? "" : "required"} placeholder="${cfg ? "leave blank to keep current" : "API_SERVER_KEY"}" autocomplete=off></label>
+<details ${cfg?.accessEnc ? "open" : ""}><summary>Optional: Cloudflare Access service token</summary>
+<small>If your Hermes hostname is protected by Cloudflare Access, enter a service token so this app can get through.</small>
+<label>Client ID<input name=aid autocomplete=off placeholder="${cfg?.accessEnc ? "leave blank to keep current" : "xxxx.access"}"></label>
+<label>Client Secret<input name=asecret type=password autocomplete=off></label></details>
 <button>Save and test connection</button></form>
 ${cfg ? `<form method=post action=/setup/delete><button style="background:#b00020">Disconnect and delete my data</button></form>` : ""}
 <small>Your Hermes must expose its OpenAI-compatible API (<code>/v1/chat/completions</code>) over public HTTPS, for example through a Cloudflare Tunnel. User: <code>${esc(uid.slice(0, 4))}…</code></small>`,
@@ -189,10 +203,13 @@ export default {
         const keyIn = String(f.get("key") ?? "").trim();
         if (!keyIn && !cfg) return setupForm(uid, cfg, "API key is required.", true);
         const keyEnc = keyIn ? await encrypt(env, keyIn) : cfg!.keyEnc;
-        const next: UserCfg = { url: v.url, keyEnc, createdAt: Date.now() };
+        const aid = String(f.get("aid") ?? "").trim(), asec = String(f.get("asecret") ?? "").trim();
+        if (!!aid !== !!asec) return setupForm(uid, cfg, "Enter both the Access Client ID and Secret, or neither.", true);
+        const accessEnc = aid ? await encrypt(env, JSON.stringify({ id: aid, secret: asec })) : cfg?.accessEnc;
+        const next: UserCfg = { url: v.url, keyEnc, ...(accessEnc ? { accessEnc } : {}), createdAt: Date.now() };
         try {
           const r = await fetch(next.url + "/v1/models", {
-            headers: { Authorization: `Bearer ${await decrypt(env, keyEnc)}` },
+            headers: await hermesHeaders(env, keyEnc, accessEnc),
             signal: AbortSignal.timeout(8000),
             redirect: "manual",
           });

@@ -26,7 +26,7 @@ const mock = createServer((req, res) => {
   req.on("data", (d) => (body += d));
   req.on("end", () => {
     if (req.url.startsWith("/omi/")) { omiCalls.push({ url: req.url, auth: req.headers.authorization }); return res.end("{}"); }
-    hermesCalls.push({ url: req.url, auth: req.headers.authorization, body });
+    hermesCalls.push({ url: req.url, auth: req.headers.authorization, access: req.headers["cf-access-client-id"] + "/" + req.headers["cf-access-client-secret"], body });
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify({ choices: [{ message: { content: "Done: reminder created." } }] }));
   });
@@ -83,6 +83,8 @@ try {
     const post = (url, key, origin = base) => fetch(base + "/setup", { method: "POST", redirect: "manual",
       headers: { cookie, origin, "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ url, key }) });
     assert.match(await (await post("http://10.0.0.5", "k")).text(), /must start with https/);
+    const half = await fetch(base + "/setup", { method: "POST", redirect: "manual", headers: { cookie, origin: base, "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ url: "https://x.example.com", key: "k", aid: "only-id", asecret: "" }) });
+    assert.match(await half.text(), /both the Access Client ID and Secret/);
     assert.match(await (await post("https://192.168.1.3", "k")).text(), /hostname, not an IP/);
     assert.equal((await post("https://x.example.com", "k", "https://evil.example")).status, 403, "cross-origin POST blocked");
     const tampered = cookie.replace(/\.[^.]+$/, ".AAAA");
@@ -91,7 +93,7 @@ try {
 
   // seed config (setup page validation path is covered in the unit checks below)
   const keyEnc = await encrypt("hermes-secret-key");
-  writeFileSync("/tmp/cfg.json", JSON.stringify({ url: `http://127.0.0.1:${MOCK}`, keyEnc, createdAt: Date.now() }));
+  writeFileSync("/tmp/cfg.json", JSON.stringify({ url: `http://127.0.0.1:${MOCK}`, keyEnc, accessEnc: await encrypt(JSON.stringify({ id: "cid.access", secret: "csecret" })), createdAt: Date.now() }));
   execFileSync("npx", ["wrangler", "kv", "key", "put", "--local", "--binding", "USERS", `u:${UID}`, "--path", "/tmp/cfg.json"], { stdio: "pipe" });
   rmSync("/tmp/cfg.json");
 
@@ -104,6 +106,7 @@ try {
     await sleep(3500);
     assert.equal(hermesCalls.length, 1, "exactly one Hermes call");
     assert.equal(hermesCalls[0].auth, "Bearer hermes-secret-key");
+    assert.equal(hermesCalls[0].access, "cid.access/csecret", "Access service-token headers sent");
     assert.match(hermesCalls[0].body, /remind me to call the dentist/);
     assert.equal(omiCalls.length, 1);
     assert.equal(omiCalls[0].auth, "Bearer omisecret");
