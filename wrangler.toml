@@ -16,7 +16,7 @@ tag = "v1"
 new_sqlite_classes = ["UserDO"]
 
 [vars]
-OMI_APP_ID = ""          # app id of the real-time transcript app (for push replies)
+OMI_APP_ID = "01M6F0RT5PQSNQKFD5WSRRC139"          # app id of the real-time transcript app (for push replies)
 DEBOUNCE_MS = "4000"
 MAX_COMMANDS_PER_HOUR = "30"
 
