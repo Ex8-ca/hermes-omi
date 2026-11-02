@@ -19,7 +19,7 @@ A Hermes agent with its API server enabled, reachable over public HTTPS on port 
 | Setup Completed URL | `https://<host>/setup-status` |
 | Scopes | none needed |
 
-Omi lets one app have one trigger, so create two apps (wake word, memory) that share this backend. Set `OMI_APP_ID` / `OMI_APP_SECRET` to the wake-word app (the one that sends push replies).
+The form's trigger dropdown appears to allow one trigger per app, so create two apps (wake word, memory) sharing this backend if needed. Set `OMI_APP_ID` / `OMI_APP_SECRET` to the wake-word app (the one that sends push replies).
 
 ## Deploy
 ```
